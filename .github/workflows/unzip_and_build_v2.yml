@@ -1,3 +1,17 @@
+# Reference copy of the "no computer, phone only" bootstrap workflow.
+#
+# This is NOT meant to live in .github/workflows/ permanently alongside the
+# real build_and_test.yml — it's a one-time trick for getting this project
+# onto GitHub and built using only a phone browser, by committing the whole
+# project as a single zip file and unzipping it inside the CI run itself
+# instead of using `git add`/`git commit` on every individual file.
+#
+# To use it: upload forex_signals_project.zip to an empty GitHub repo as a
+# single file, then create a new file at exactly
+# .github/workflows/unzip_and_build.yml in that repo (typing the path
+# creates the folders) and paste this content in, then commit directly to
+# main. See the chat conversation this project came from for the full
+# walkthrough.
 name: Unzip and build
 
 on:
@@ -22,9 +36,9 @@ jobs:
       # The supplied source archive omits the binary Gradle wrapper JAR.
       # Install the exact Gradle release and regenerate that tiny bootstrap
       # file before Flutter invokes the Android build.
-      - name: Set up Gradle 8.13
+      - name: Set up Gradle 8.14
         uses: gradle/actions/setup-gradle@v6
-        with: { gradle-version: "8.13" }
+        with: { gradle-version: "8.14" }
       - name: Restore Android Gradle wrapper
         working-directory: forex_signals/android
         shell: bash
@@ -34,7 +48,7 @@ jobs:
             printf 'flutter.sdk=%s\n' "$flutter_sdk"
             printf 'sdk.dir=%s\n' "$ANDROID_HOME"
           } > local.properties
-          gradle wrapper --gradle-version 8.13
+          gradle wrapper --gradle-version 8.14
       - name: Install dependencies
         working-directory: forex_signals
         run: flutter pub get
