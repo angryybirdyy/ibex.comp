@@ -1,0 +1,58 @@
+name: Unzip and build
+
+on:
+  push:
+    branches: ["**"]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unzip project
+        run: unzip -o forex_signals_project.zip
+      - uses: actions/setup-java@v5
+        with: { distribution: "zulu", java-version: "17" }
+      - uses: subosito/flutter-action@v2
+        with: { channel: "stable", cache: true }
+        # No flutter-version pin here either, for the same reason as
+        # build_and_test.yml: this action needs an exact version string,
+        # never a ">=" range, and "channel: stable" alone already gets a
+        # recent-enough release.
+      # The supplied source archive omits the binary Gradle wrapper JAR.
+      # Install the exact Gradle release and regenerate that tiny bootstrap
+      # file before Flutter invokes the Android build.
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v6
+        with: { gradle-version: "8.13" }
+      - name: Restore Android Gradle wrapper
+        working-directory: forex_signals/android
+        shell: bash
+        run: |
+          flutter_sdk="$(dirname "$(dirname "$(readlink -f "$(command -v flutter)")")")"
+          {
+            printf 'flutter.sdk=%s\n' "$flutter_sdk"
+            printf 'sdk.dir=%s\n' "$ANDROID_HOME"
+          } > local.properties
+          gradle wrapper --gradle-version 8.13
+      - name: Install dependencies
+        working-directory: forex_signals
+        run: flutter pub get
+      - name: Analyze
+        working-directory: forex_signals
+        run: flutter analyze --no-fatal-infos
+      - name: Tests
+        working-directory: forex_signals
+        run: flutter test
+      - name: Build debug APK
+        working-directory: forex_signals
+        run: flutter build apk --debug
+      - name: Build release APK
+        working-directory: forex_signals
+        run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forex-signals-apks
+          path: |
+            forex_signals/build/app/outputs/flutter-apk/app-debug.apk
+            forex_signals/build/app/outputs/flutter-apk/app-release.apk
